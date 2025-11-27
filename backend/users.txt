@@ -1,0 +1,44 @@
+[
+  {
+    "id": 1,
+    "name": "abcd",
+    "email": "abcda",
+    "password": "$2b$10$wPdJEikQMeYfL2HA10z0Je.n7dIgJmTSZVL23ipLO.tXYJam8xT0q",
+    "createdAt": "2025-11-19T18:15:15.458Z"
+  },
+  {
+    "id": 2,
+    "name": "aaaa",
+    "email": "aaaaa",
+    "password": "$2b$10$CcYk6CVPhY/H.VG3YovgMOsvacOJWtlLJHoELrqqzgz142WCGMpFi",
+    "createdAt": "2025-11-19T18:15:58.152Z"
+  },
+  {
+    "id": 3,
+    "name": "aaaab",
+    "email": "aaaaab",
+    "password": "$2b$10$BLPi8U095Y9YeELtp1YadOgQUzTKUqXr4KM6eQ8A8JRRRMFZqtf6O",
+    "createdAt": "2025-11-19T18:17:54.211Z"
+  },
+  {
+    "id": 4,
+    "name": "aaaa",
+    "email": "aaaaaaaa",
+    "password": "$2b$10$1GfG5SVtbiFE5KfaumNUr.9hXw6c7dOQDPyms4PR1Fd6sVIs4iXW.",
+    "createdAt": "2025-11-19T18:19:13.686Z"
+  },
+  {
+    "id": 5,
+    "name": "aaaaaaa",
+    "email": "bbbbbbbbbbbbbbb",
+    "password": "$2b$10$8ywX5IGMuWTZjVaNnPxgVuNFRS8.ADMCXH32Org.Masj0f.HA/zl2",
+    "createdAt": "2025-11-21T19:24:34.234Z"
+  },
+  {
+    "id": 6,
+    "name": "abcdefg",
+    "email": "abcdefg",
+    "password": "$2b$10$RAs36J2e5TZWfexf55XwjOiYpUqoox5V1.OtoDbLxGIDXBrRmikEO",
+    "createdAt": "2025-11-21T19:29:14.397Z"
+  }
+]
