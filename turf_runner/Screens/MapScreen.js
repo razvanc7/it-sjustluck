@@ -1,8 +1,9 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { StyleSheet, View, ActivityIndicator, Platform, PermissionsAndroid, Text, TouchableOpacity } from 'react-native';
 import MapView, { PROVIDER_GOOGLE, Polyline, Polygon } from 'react-native-maps';
 import Geolocation from '@react-native-community/geolocation';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useFocusEffect } from '@react-navigation/native';
 import { neighborhoods } from '../data/neighborhoods';
 
 const MapScreen = ({ navigation }) => {
@@ -12,10 +13,44 @@ const MapScreen = ({ navigation }) => {
   const [route, setRoute] = useState([]);
   const [distance, setDistance] = useState(0);
   const [steps, setSteps] = useState(0);
-  const [visitedNeighborhoods, setVisitedNeighborhoods] = useState(new Set());
+  const [visitedNeighborhoodsCount, setVisitedNeighborhoodsCount] = useState(0);
   const [currentRegion, setCurrentRegion] = useState(null);
   const [sessionId, setSessionId] = useState(null);
+  
+  const [ownerships, setOwnerships] = useState({});
+
   const mapRef = useRef(null);
+
+  const fetchMapState = async () => {
+    try {
+      const token = await AsyncStorage.getItem('userToken');
+      if (!token) return;
+
+      const response = await fetch('http://10.0.2.2:3000/location/map-state', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await response.json();
+      
+      const newOwnerships = {};
+      if (Array.isArray(data)) {
+        data.forEach(item => {
+          newOwnerships[item.neighborhood_id] = {
+            color: item.owner_color,
+            owner: item.owner_name
+          };
+        });
+      }
+      setOwnerships(newOwnerships);
+    } catch (err) {
+      console.error("Failed to load map owner colors", err);
+    }
+  };
+
+  useFocusEffect(
+    useCallback(() => {
+      fetchMapState();
+    }, [])
+  );
 
   const getAuthHeaders = async () => {
     const token = await AsyncStorage.getItem('userToken');
@@ -23,20 +58,17 @@ const MapScreen = ({ navigation }) => {
   };
 
   const getNeighborhoodColor = (neighborhoodId) => {
-    const colors = [
-      'rgba(255, 69, 96, 0.5)',
-      'rgba(69, 123, 255, 0.5)',
-      'rgba(69, 255, 123, 0.5)',
-      'rgba(255, 196, 69, 0.5)',
-      'rgba(196, 69, 255, 0.5)',
-      'rgba(69, 255, 196, 0.5)',
-      'rgba(255, 123, 69, 0.5)',
-      'rgba(123, 69, 255, 0.5)',
-      'rgba(255, 69, 196, 0.5)',
-      'rgba(69, 196, 255, 0.5)',
-    ];
-    const hash = neighborhoodId.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
-    return colors[hash % colors.length];
+    if (ownerships[neighborhoodId]) {
+      return ownerships[neighborhoodId].color + '80'; 
+    }
+    return 'rgba(200, 200, 200, 0.1)';
+  };
+
+  const getNeighborhoodStroke = (neighborhoodId) => {
+    if (ownerships[neighborhoodId]) {
+      return ownerships[neighborhoodId].color;
+    }
+    return '#cccccc';
   };
 
   const handleZoomIn = () => {
@@ -68,30 +100,19 @@ const MapScreen = ({ navigation }) => {
       if (Platform.OS === 'android') {
         try {
           const granted = await PermissionsAndroid.request(
-            PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
-            {
-              title: 'Location Permission',
-              message: 'This app needs access to your location.',
-              buttonPositive: 'OK',
-            }
+            PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION
           );
           if (granted !== PermissionsAndroid.RESULTS.GRANTED) {
-            setLoading(false);
-            return;
+            setLoading(false); return;
           }
         } catch (err) {
-          console.warn(err);
-          setLoading(false);
-          return;
+          console.warn(err); setLoading(false); return;
         }
       }
 
       Geolocation.getCurrentPosition(
         (position) => {
-          const coords = {
-            latitude: position.coords.latitude,
-            longitude: position.coords.longitude,
-          };
+          const coords = { latitude: position.coords.latitude, longitude: position.coords.longitude };
           setLocation(coords);
           setCurrentRegion({
             latitude: coords.latitude,
@@ -101,10 +122,7 @@ const MapScreen = ({ navigation }) => {
           });
           setLoading(false);
         },
-        (error) => {
-          console.log(error);
-          setLoading(false);
-        },
+        (error) => { console.log(error); setLoading(false); },
         { enableHighAccuracy: true, timeout: 15000, maximumAge: 10000 }
       );
     };
@@ -114,13 +132,11 @@ const MapScreen = ({ navigation }) => {
 
   useEffect(() => {
     let watchId;
+
     if (isTracking && sessionId) {
       watchId = Geolocation.watchPosition(
         async (position) => {
-          const coords = {
-            latitude: position.coords.latitude,
-            longitude: position.coords.longitude,
-          };
+          const coords = { latitude: position.coords.latitude, longitude: position.coords.longitude };
 
           const headers = await getAuthHeaders();
           if (headers) {
@@ -143,7 +159,13 @@ const MapScreen = ({ navigation }) => {
                 setSteps(prev => prev + data.steps);
                 
                 if (data.neighborhoodId) {
-                  setVisitedNeighborhoods(prev => new Set([...prev, data.neighborhoodId]));
+                   setVisitedNeighborhoodsCount(prev => { 
+                       return prev;
+                   });
+                }
+
+                if (data.captured) {
+                  fetchMapState();
                 }
               }
             } catch (error) {
@@ -153,51 +175,24 @@ const MapScreen = ({ navigation }) => {
 
           setRoute(prev => [...prev, coords]);
           setLocation(coords);
-          
-          if (mapRef.current) {
-            const newRegion = {
-              latitude: coords.latitude,
-              longitude: coords.longitude,
-              latitudeDelta: currentRegion?.latitudeDelta || 0.01,
-              longitudeDelta: currentRegion?.longitudeDelta || 0.01,
-            };
-            mapRef.current.animateToRegion(newRegion, 1000);
-            setCurrentRegion(newRegion);
-          }
         },
         (error) => console.log('Watch error:', error),
-        { 
-          enableHighAccuracy: true, 
-          distanceFilter: 5,
-          interval: 1000,
-          fastestInterval: 500
-        }
+        { enableHighAccuracy: true, distanceFilter: 5, interval: 1000, fastestInterval: 500 }
       );
     }
 
-    return () => {
-      if (watchId) {
-        Geolocation.clearWatch(watchId);
-      }
-    };
-  }, [isTracking, sessionId, currentRegion]);
+    return () => { if (watchId) Geolocation.clearWatch(watchId); };
+  }, [isTracking, sessionId]);
 
   const handleStartStop = async () => {
     if (isTracking) {
       const headers = await getAuthHeaders();
       if (headers && sessionId) {
         try {
-          const response = await fetch('http://10.0.2.2:3000/location/stop-session', {
-            method: 'POST',
-            headers,
-            body: JSON.stringify({ sessionId })
+          await fetch('http://10.0.2.2:3000/location/stop-session', {
+            method: 'POST', headers, body: JSON.stringify({ sessionId })
           });
-
-          const data = await response.json();
-          console.log('Session stopped:', data);
-        } catch (error) {
-          console.error('Error stopping session:', error);
-        }
+        } catch (error) { console.error(error); }
       }
 
       setIsTracking(false);
@@ -207,17 +202,15 @@ const MapScreen = ({ navigation }) => {
         setRoute([]);
         setDistance(0);
         setSteps(0);
-        setVisitedNeighborhoods(new Set());
+        setVisitedNeighborhoodsCount(0);
       }, 100);
     } else {
       const headers = await getAuthHeaders();
       if (headers) {
         try {
           const response = await fetch('http://10.0.2.2:3000/location/start-session', {
-            method: 'POST',
-            headers
+            method: 'POST', headers
           });
-
           const data = await response.json();
           
           if (response.ok) {
@@ -225,32 +218,16 @@ const MapScreen = ({ navigation }) => {
             setRoute([]);
             setDistance(0);
             setSteps(0);
-            setVisitedNeighborhoods(new Set());
+            setVisitedNeighborhoodsCount(0);
             setIsTracking(true);
-            console.log('Session started:', data.sessionId);
           }
-        } catch (error) {
-          console.error('Error starting session:', error);
-        }
+        } catch (error) { console.error(error); }
       }
     }
   };
 
-  if (loading) {
-    return (
-      <View style={styles.container}>
-        <ActivityIndicator size="large" color="#ffffff" />
-      </View>
-    );
-  }
-
-  if (!location) {
-    return (
-      <View style={styles.container}>
-        <Text style={styles.text}>Unable to get location</Text>
-      </View>
-    );
-  }
+  if (loading) return <View style={styles.container}><ActivityIndicator size="large" color="#ffffff"/></View>;
+  if (!location) return <View style={styles.container}><Text style={styles.text}>Unable to get location</Text></View>;
 
   return (
     <View style={styles.container}>
@@ -268,25 +245,18 @@ const MapScreen = ({ navigation }) => {
         showsUserLocation={true}
         showsMyLocationButton={true}
       >
-        {neighborhoods.map(neighborhood => {
-          const isVisited = visitedNeighborhoods.has(neighborhood.id);
-          return (
-            <Polygon
-              key={neighborhood.id}
-              coordinates={neighborhood.coordinates}
-              fillColor={isVisited ? getNeighborhoodColor(neighborhood.id) : 'rgba(200, 200, 200, 0.1)'}
-              strokeColor={isVisited ? '#e94560' : '#cccccc'}
-              strokeWidth={isVisited ? 3 : 1}
-            />
-          );
-        })}
+        {neighborhoods.map(neighborhood => (
+          <Polygon
+            key={neighborhood.id}
+            coordinates={neighborhood.coordinates}
+            fillColor={getNeighborhoodColor(neighborhood.id)}
+            strokeColor={getNeighborhoodStroke(neighborhood.id)}
+            strokeWidth={ownerships[neighborhood.id] ? 3 : 1}
+          />
+        ))}
         
         {route.length > 1 && (
-          <Polyline
-            coordinates={route}
-            strokeColor="#0080ff"
-            strokeWidth={6}
-          />
+          <Polyline coordinates={route} strokeColor="#0080ff" strokeWidth={6} />
         )}
       </MapView>
 
@@ -312,15 +282,10 @@ const MapScreen = ({ navigation }) => {
         {isTracking && (
           <View style={styles.statsContainer}>
             <Text style={styles.statsText}>
-              Distance: {distance >= 1000 
-                ? `${(distance / 1000).toFixed(2)} km` 
-                : `${distance.toFixed(0)} m`}
+              Distance: {distance >= 1000 ? `${(distance / 1000).toFixed(2)} km` : `${distance.toFixed(0)} m`}
             </Text>
             <Text style={styles.statsText}>
               Steps: {steps.toLocaleString()}
-            </Text>
-            <Text style={styles.statsText}>
-              Neighborhoods: {visitedNeighborhoods.size}
             </Text>
           </View>
         )}
@@ -393,9 +358,9 @@ const styles = StyleSheet.create({
   },
   statsContainer: {
     position: 'absolute',
-    bottom: 650,
+    top: -725,
     left: 0,
-    marginTop: 20,
+    marginTop: 40,
     backgroundColor: 'rgba(0,0,0,0.7)',
     paddingHorizontal: 16,
     paddingVertical: 12,

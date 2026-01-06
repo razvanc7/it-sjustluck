@@ -157,7 +157,7 @@ const ProfileScreen = ({ navigation }) => {
             <Text style={styles.statValue}>
               {userData.statistics?.unique_neighborhoods || 0}
             </Text>
-            <Text style={styles.statLabel}>Neighborhoods</Text>
+            <Text style={styles.statLabel}>Turfs Owned</Text>
           </View>
         </View>
 
