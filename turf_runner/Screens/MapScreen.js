@@ -5,6 +5,7 @@ import Geolocation from '@react-native-community/geolocation';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from '@react-navigation/native';
 import { neighborhoods } from '../data/neighborhoods';
+import Icon from 'react-native-vector-icons/FontAwesome5';
 
 const MapScreen = ({ navigation }) => {
   const [location, setLocation] = useState(null);
@@ -21,7 +22,8 @@ const MapScreen = ({ navigation }) => {
 
   const mapRef = useRef(null);
 
-  const fetchMapState = async () => {
+  // Memoize the fetch function
+  const fetchMapState = useCallback(async () => {
     try {
       const token = await AsyncStorage.getItem('userToken');
       if (!token) return;
@@ -44,12 +46,19 @@ const MapScreen = ({ navigation }) => {
     } catch (err) {
       console.error("Failed to load map owner colors", err);
     }
-  };
+  }, []);
 
+  // Poll for updates when screen is focused
   useFocusEffect(
     useCallback(() => {
-      fetchMapState();
-    }, [])
+      fetchMapState(); // Fetch immediately on focus
+
+      const intervalId = setInterval(() => {
+        fetchMapState();
+      }, 5000); // 5 seconds polling
+
+      return () => clearInterval(intervalId); // Cleanup on blur
+    }, [fetchMapState])
   );
 
   const getAuthHeaders = async () => {
@@ -269,26 +278,35 @@ const MapScreen = ({ navigation }) => {
         </TouchableOpacity>
       </View>
 
-      <View style={styles.controls}>
-        <TouchableOpacity 
-          style={[styles.button, isTracking && styles.buttonStop]} 
-          onPress={handleStartStop}
-        >
-          <Text style={styles.buttonText}>
-            {isTracking ? 'Stop Tracking' : 'Start Tracking'}
+      <TouchableOpacity 
+        style={styles.leaderboardButtonTopLeft} 
+        onPress={() => navigation.navigate('Leaderboard')}
+      >
+        <Icon name="trophy" size={24} color="#fff" />
+      </TouchableOpacity>
+
+      {isTracking && (
+        <View style={styles.statsContainerTopLeft}>
+          <Text style={styles.statsText}>
+            Distance: {distance >= 1000 ? `${(distance / 1000).toFixed(2)} km` : `${distance.toFixed(0)} m`}
           </Text>
-        </TouchableOpacity>
-        
-        {isTracking && (
-          <View style={styles.statsContainer}>
-            <Text style={styles.statsText}>
-              Distance: {distance >= 1000 ? `${(distance / 1000).toFixed(2)} km` : `${distance.toFixed(0)} m`}
+          <Text style={styles.statsText}>
+            Steps: {steps.toLocaleString()}
+          </Text>
+        </View>
+      )}
+
+      <View style={styles.controls}>
+        <View style={styles.controlsRow}>
+          <TouchableOpacity 
+            style={[styles.button, isTracking && styles.buttonStop, { flex: 1 }]} 
+            onPress={handleStartStop}
+          >
+            <Text style={styles.buttonText}>
+              {isTracking ? 'Stop Tracking' : 'Start Tracking'}
             </Text>
-            <Text style={styles.statsText}>
-              Steps: {steps.toLocaleString()}
-            </Text>
-          </View>
-        )}
+          </TouchableOpacity>
+        </View>
       </View>
     </View>
   );
@@ -310,9 +328,9 @@ const styles = StyleSheet.create({
     fontSize: 18,
   },
   zoomControls: {
-    position: 'absolute',
+    position: 'absolute', 
     right: 10,
-    top: 55,
+    top: 70,
     gap: 10,
   },
   zoomButton: {
@@ -356,11 +374,32 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '600',
   },
-  statsContainer: {
+  controlsRow: {
+    flexDirection: 'row',
+    width: '100%',
+    alignItems: 'stretch',
+    gap: 10,
+  },
+  leaderboardButtonTopLeft: {
     position: 'absolute',
-    top: -725,
-    left: 0,
-    marginTop: 40,
+    top: 50,
+    left: 10,
+    backgroundColor: '#0f3460',
+    width: 50,
+    height: 50,
+    borderRadius: 8, // Square-like with slight rounding
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 3,
+    elevation: 5,
+  },
+  statsContainerTopLeft: {
+    position: 'absolute',
+    top: 105, // 55 (top) + 40 (height) + 10 (gap)
+    left: 10,
     backgroundColor: 'rgba(0,0,0,0.7)',
     paddingHorizontal: 16,
     paddingVertical: 12,

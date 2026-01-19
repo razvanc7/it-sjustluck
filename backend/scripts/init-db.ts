@@ -87,6 +87,17 @@ const initDb = async () => {
             );
         `);
 
+        // Create Chat Table 
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS chat_messages (
+                id SERIAL PRIMARY KEY,
+                neighborhood_id VARCHAR(255) NOT NULL,
+                user_id INTEGER REFERENCES users(id),
+                message TEXT NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                );
+        `);
+
         console.log("Database initialized successfully with fresh tables (including friends)!");
     } catch (error) {
         console.error("Error initializing database:", error);

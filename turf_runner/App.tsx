@@ -10,6 +10,8 @@ import RegisterScreen from './Screens/RegisterScreen';
 import MapScreen from './Screens/MapScreen';
 import ProfileScreen from './Screens/ProfileScreen'; 
 import FriendsScreen from './Screens/FriendsScreen'; 
+import LeaderboardScreen from './Screens/LeaderboardScreen';
+import ChatScreen from './Screens/ChatScreen'; // <--- Import Chat
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator(); 
@@ -48,6 +50,19 @@ const MainTabs = () => {
           ),
         }}
       />
+      
+      {/* NEW: Chat Tab */}
+      <Tab.Screen 
+        name="Chat" 
+        component={ChatScreen}
+        options={{ 
+          title: 'Chat',
+          tabBarIcon: ({ color, size }) => (
+            <Icon name="chatbubbles" size={size || 24} color={color} />
+          ),
+        }}
+      />
+
       <Tab.Screen 
         name="Profile" 
         component={ProfileScreen}
@@ -86,8 +101,21 @@ const App = () => (
         <Stack.Screen name="Welcome" component={WelcomeScreen} options={{ headerShown: false }}/>
         <Stack.Screen name="Login" component={LoginScreen} options={{ headerShown: false }}/>
         <Stack.Screen name="Register" component={RegisterScreen} options={{ headerShown: false }}/>
+        
+        {/* Leaderboard is kept as a Stack screen because it's accessed via a button on the Map */}
         <Stack.Screen 
-          name="MainApp"
+            name="Leaderboard" 
+            component={LeaderboardScreen} 
+            options={{ 
+                headerShown: true,
+                title: 'Leaderboard',
+                headerStyle: { backgroundColor: '#0f3460' },
+                headerTintColor: '#fff'
+            }}
+        />
+        
+        <Stack.Screen 
+          name="MainTabs"
           component={MainTabs}
           options={{ headerShown: false }} 
         />

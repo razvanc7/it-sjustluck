@@ -32,7 +32,7 @@ const LoginScreen = ({ navigation }) => {
         await AsyncStorage.setItem('userId', data.user.id.toString()); 
 
         Alert.alert('Success', 'Login successful!');
-        navigation.replace('MainApp'); 
+        navigation.replace('MainTabs'); 
       } else {
         Alert.alert('Error', data.error || 'Login failed');
       }

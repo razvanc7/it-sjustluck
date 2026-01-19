@@ -36,7 +36,7 @@ const RegisterScreen = ({ navigation }) => {
 
         if (response.ok) {
             Alert.alert('Success', 'Registration successful! Please log in.');
-            navigation.replace('MainApp'); 
+            navigation.replace('MainTabs'); 
         } else {
             Alert.alert('Error', data.error || 'Registration failed');
         }
