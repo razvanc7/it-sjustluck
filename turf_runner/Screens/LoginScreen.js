@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Text, StyleSheet, TouchableOpacity, View, TextInput, Alert, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage'; 
+import Theme, { Colors } from '../components/Theme';
 
 const LoginScreen = ({ navigation }) => {
   const [name, setName] = useState('');
@@ -46,8 +47,11 @@ const LoginScreen = ({ navigation }) => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <Text style={styles.title}>Login</Text>
-      
+      <View style={styles.header}>
+        <Text style={styles.title}>Welcome back</Text>
+        <Text style={styles.subtitle}>Sign in to continue turfing</Text>
+      </View>
+
       <View style={styles.formContainer}>
         <TextInput
           style={styles.input}
@@ -82,14 +86,15 @@ const LoginScreen = ({ navigation }) => {
           disabled={loading}
         >
           {loading ? (
-            <ActivityIndicator color="#ffffff" />
+            <ActivityIndicator color={Colors.background} />
           ) : (
-            <Text style={styles.buttonText}>Login</Text>
+            <Text style={styles.buttonText}>Sign in</Text>
           )}
         </TouchableOpacity>
 
-        <TouchableOpacity onPress={() => navigation.navigate('Register')}>
-            <Text style={styles.linkText}>Dont have an account? Register</Text>
+        <TouchableOpacity style={styles.linkRow} onPress={() => navigation.navigate('Register')}>
+            <Text style={styles.linkText}>Don’t have an account?</Text>
+            <Text style={styles.linkAction}> Register</Text>
         </TouchableOpacity>
       </View>
     </SafeAreaView>
@@ -100,15 +105,21 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#27496d',
+    backgroundColor: Colors.background,
     padding: 20,
   },
+  header: {
+    alignItems: 'center',
+    marginBottom: 24
+  },
   title: {
-    color: '#ffffff',
-    fontSize: 32,
-    fontWeight: '600',
-    marginBottom: 40,
+    color: '#fff',
+    fontSize: 28,
+    fontWeight: '800',
+  },
+  subtitle: {
+    color: Colors.muted,
+    marginTop: 6
   },
   formContainer: {
     width: '100%',
@@ -116,30 +127,28 @@ const styles = StyleSheet.create({
     maxWidth: 400,
   },
   input: {
-    backgroundColor: '#0f3460',
-    color: '#ffffff',
-    paddingVertical: 14,
+    backgroundColor: Colors.card,
+    color: '#fff',
+    paddingVertical: 12,
     paddingHorizontal: 16,
-    borderRadius: 8,
+    borderRadius: 12,
     fontSize: 16,
   },
   button: {
-    backgroundColor: '#0452b7',
+    backgroundColor: Colors.accent,
     paddingVertical: 14,
-    borderRadius: 8,
+    borderRadius: 12,
     alignItems: 'center',
     marginTop: 10,
   },
   buttonText: {
-    color: '#ffffff',
+    color: '#04263a',
     fontSize: 18,
-    fontWeight: '600',
+    fontWeight: '800',
   },
-  linkText: {
-    color: '#999',
-    textAlign: 'center',
-    marginTop: 15,
-  }
+  linkRow: { flexDirection: 'row', justifyContent: 'center', marginTop: 14 },
+  linkText: { color: Colors.muted },
+  linkAction: { color: Colors.accent, fontWeight: '700' }
 });
 
 export default LoginScreen;

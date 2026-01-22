@@ -10,6 +10,7 @@ import {
   Easing 
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import Theme, { Colors } from '../components/Theme';
 import { useFocusEffect } from '@react-navigation/native';
 
 const WelcomeScreen = ({ navigation }) => {
@@ -155,7 +156,7 @@ const WelcomeScreen = ({ navigation }) => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#1a1a2e" />
+      <StatusBar barStyle="light-content" backgroundColor={Colors.background} />
       
       {/* Background Circle 1 (Top Right) */}
       <Animated.View 
@@ -238,7 +239,7 @@ const styles = StyleSheet.create({
     width: 350,
     height: 350,
     borderRadius: 175,
-    backgroundColor: '#27496d', 
+    backgroundColor: Colors.card,
   },
   circle2: {
     position: 'absolute',
@@ -247,7 +248,7 @@ const styles = StyleSheet.create({
     width: 250,
     height: 250,
     borderRadius: 125,
-    backgroundColor: '#052041ff',
+    backgroundColor: Colors.accent + '55',
   },
   contentContainer: {
     flex: 1,
@@ -264,10 +265,10 @@ const styles = StyleSheet.create({
     width: 140,
     height: 140,
     borderRadius: 70,
-    backgroundColor: 'rgba(79, 195, 247, 0.15)', 
+    backgroundColor: Colors.accent + '22',
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#4fc3f7',
+    shadowColor: Colors.accent,
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.6,
     shadowRadius: 20,
@@ -281,27 +282,27 @@ const styles = StyleSheet.create({
     marginBottom: 60,
   },
   welcomeText: {
-    color: '#a0a0a0',
-    fontSize: 20,
-    fontWeight: '400',
-    marginBottom: 5,
+    color: Colors.muted,
+    fontSize: 18,
+    fontWeight: '500',
+    marginBottom: 6,
     letterSpacing: 1,
   },
   titleText: {
     color: '#ffffff',
-    fontSize: 48,
-    fontWeight: '800',
+    fontSize: 44,
+    fontWeight: '900',
     letterSpacing: 1,
-    textShadowColor: 'rgba(79, 195, 247, 0.5)',
+    textShadowColor: Colors.accent + '55',
     textShadowOffset: { width: 0, height: 0 },
-    textShadowRadius: 15,
+    textShadowRadius: 18,
   },
   tagline: {
-    color: '#4fc3f7',
-    fontSize: 16,
+    color: Colors.accent2,
+    fontSize: 15,
     marginTop: 10,
-    fontWeight: '500',
-    opacity: 0.9,
+    fontWeight: '600',
+    opacity: 0.95,
   },
   buttonContainer: {
     width: '100%',
@@ -309,38 +310,38 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
   },
   loginButton: {
-    backgroundColor: '#0452b0',
+    backgroundColor: Colors.accent,
     paddingVertical: 16,
-    borderRadius: 12,
+    borderRadius: 14,
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#0452b0',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.4,
-    shadowRadius: 8,
-    elevation: 8,
+    shadowColor: Colors.accent,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.22,
+    shadowRadius: 12,
+    elevation: 10,
   },
   loginButtonText: {
-    color: '#ffffff',
+    color: '#04263a',
     fontSize: 18,
-    fontWeight: 'bold',
-    letterSpacing: 0.5,
+    fontWeight: '900',
+    letterSpacing: 0.4,
   },
   registerButton: {
-    backgroundColor: 'rgba(15, 52, 96, 0.6)', 
+    backgroundColor: 'transparent',
     paddingVertical: 14,
     borderRadius: 12,
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 2,
-    borderColor: '#4fc3f7',
+    borderColor: Colors.accent,
   },
   registerButtonText: {
-    color: '#4fc3f7',
+    color: Colors.accent,
     fontSize: 18,
-    fontWeight: '600',
+    fontWeight: '700',
     letterSpacing: 0
   },
 });

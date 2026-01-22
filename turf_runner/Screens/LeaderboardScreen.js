@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, FlatList, StyleSheet, ActivityIndicator } from 'react-native';
 import { neighborhoods } from '../data/neighborhoods';
+import Theme, { Colors, Avatar } from '../components/Theme';
 
 const LeaderboardScreen = () => {
   const [data, setData] = useState([]);
@@ -42,7 +43,7 @@ const LeaderboardScreen = () => {
     <View style={styles.container}>
       <Text style={styles.title}>Turf Control</Text>
       {loading ? (
-        <ActivityIndicator size="large" color="#3498db" />
+        <ActivityIndicator size="large" color={Colors.accent} />
       ) : (
         <FlatList
           data={data}
@@ -57,23 +58,27 @@ const LeaderboardScreen = () => {
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#1a1a2e', padding: 20 },
-  title: { fontSize: 24, fontWeight: 'bold', marginBottom: 20, textAlign: 'center', color: '#fff' },
+  container: { flex: 1, backgroundColor: Colors.background, padding: 18 },
+  title: { fontSize: 22, fontWeight: '800', marginBottom: 14, textAlign: 'center', color: '#fff' },
   list: { paddingBottom: 20 },
   item: { 
-    padding: 15, 
-    marginBottom: 10,
-    backgroundColor: '#0f3460', 
-    borderRadius: 8,
-    borderLeftWidth: 4,
-    borderLeftColor: '#3498db'
+    padding: 14, 
+    marginBottom: 12,
+    backgroundColor: Colors.card, 
+    borderRadius: 12,
+    borderLeftWidth: 6,
+    borderLeftColor: Colors.accent,
+    shadowColor: '#000',
+    shadowOpacity: 0.14,
+    shadowRadius: 6,
+    elevation: 3
   },
-  header: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 5 },
-  neighborhood: { fontSize: 18, fontWeight: 'bold', color: '#fff' },
-  steps: { fontSize: 14, color: '#a0a0a0' },
-  owner: { fontSize: 16, color: '#ccc' },
-  ownerName: { color: '#4cc9f0', fontWeight: 'bold' },
-  emptyText: { color: '#aaa', textAlign: 'center', marginTop: 20, fontSize: 16 }
+  header: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 },
+  neighborhood: { fontSize: 16, fontWeight: '800', color: '#fff' },
+  steps: { fontSize: 13, color: Colors.muted },
+  owner: { fontSize: 14, color: Colors.muted },
+  ownerName: { color: Colors.accent, fontWeight: '800' },
+  emptyText: { color: Colors.muted, textAlign: 'center', marginTop: 20, fontSize: 15 }
 });
 
 export default LeaderboardScreen;

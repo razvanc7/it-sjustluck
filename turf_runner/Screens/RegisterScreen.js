@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Text, StyleSheet, TouchableOpacity, View, TextInput, Alert, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage'; 
+import Theme, { Colors } from '../components/Theme';
 
 const RegisterScreen = ({ navigation }) => {
   const [name, setName] = useState('');
@@ -50,8 +51,11 @@ const RegisterScreen = ({ navigation }) => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <Text style={styles.title}>Register</Text>
-      
+      <View style={styles.header}>
+        <Text style={styles.title}>Create account</Text>
+        <Text style={styles.subtitle}>Join the turfing community</Text>
+      </View>
+
       <View style={styles.formContainer}>
         <TextInput
           style={styles.input}
@@ -95,14 +99,15 @@ const RegisterScreen = ({ navigation }) => {
           disabled={loading}
         >
           {loading ? (
-            <ActivityIndicator color="#ffffff" />
+            <ActivityIndicator color={Colors.background} />
           ) : (
-            <Text style={styles.buttonText}>Register</Text>
+            <Text style={styles.buttonText}>Create</Text>
           )}
         </TouchableOpacity>
 
-        <TouchableOpacity onPress={() => navigation.navigate('Login')}>
-            <Text style={styles.linkText}>Already have an account? Login</Text>
+        <TouchableOpacity style={styles.linkRow} onPress={() => navigation.navigate('Login')}>
+            <Text style={styles.linkText}>Already have an account?</Text>
+            <Text style={styles.linkAction}> Login</Text>
         </TouchableOpacity>
       </View>
     </SafeAreaView>
@@ -113,46 +118,40 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#052041ff',
+    backgroundColor: Colors.background,
     padding: 20,
   },
-  title: {
-    color: '#ffffff',
-    fontSize: 32,
-    fontWeight: '600',
-    marginBottom: 40,
-  },
+  header: { alignItems: 'center', marginBottom: 18 },
+  title: { color: '#fff', fontSize: 26, fontWeight: '800' },
+  subtitle: { color: Colors.muted, marginTop: 6 },
   formContainer: {
     width: '100%',
     gap: 16,
     maxWidth: 400,
   },
   input: {
-    backgroundColor: '#0f3460',
-    color: '#ffffff',
-    paddingVertical: 14,
+    backgroundColor: Colors.card,
+    color: '#fff',
+    paddingVertical: 12,
     paddingHorizontal: 16,
-    borderRadius: 8,
+    borderRadius: 12,
     fontSize: 16,
   },
   button: {
-    backgroundColor: '#0452b7',
+    backgroundColor: Colors.accent,
     paddingVertical: 14,
-    borderRadius: 8,
+    borderRadius: 12,
     alignItems: 'center',
     marginTop: 10,
   },
   buttonText: {
-    color: '#ffffff',
+    color: '#04263a',
     fontSize: 18,
-    fontWeight: '600',
+    fontWeight: '800',
   },
-  linkText: {
-    color: '#999',
-    textAlign: 'center',
-    marginTop: 15,
-  }
+  linkRow: { flexDirection: 'row', justifyContent: 'center', marginTop: 14 },
+  linkText: { color: Colors.muted },
+  linkAction: { color: Colors.accent, fontWeight: '700' }
 });
 
 export default RegisterScreen;

@@ -1,11 +1,12 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
-import { StyleSheet, View, ActivityIndicator, Platform, PermissionsAndroid, Text, TouchableOpacity } from 'react-native';
+import { StyleSheet, View, ActivityIndicator, Platform, PermissionsAndroid, Text, TouchableOpacity, Modal } from 'react-native';
 import MapView, { PROVIDER_GOOGLE, Polyline, Polygon } from 'react-native-maps';
 import Geolocation from '@react-native-community/geolocation';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from '@react-navigation/native';
 import { neighborhoods } from '../data/neighborhoods';
 import Icon from 'react-native-vector-icons/FontAwesome5';
+import Theme, { Colors, Avatar } from '../components/Theme';
 
 const MapScreen = ({ navigation }) => {
   const [location, setLocation] = useState(null);
@@ -37,8 +38,10 @@ const MapScreen = ({ navigation }) => {
       if (Array.isArray(data)) {
         data.forEach(item => {
           newOwnerships[item.neighborhood_id] = {
-            color: item.owner_color,
-            owner: item.owner_name
+            owner_name: item.owner_name,
+            owner_color: item.owner_color,
+            max_steps: item.max_steps,
+            captured_at: item.captured_at
           };
         });
       }
@@ -68,14 +71,56 @@ const MapScreen = ({ navigation }) => {
 
   const getNeighborhoodColor = (neighborhoodId) => {
     if (ownerships[neighborhoodId]) {
-      return ownerships[neighborhoodId].color + '80'; 
+      const c = ownerships[neighborhoodId].owner_color || ownerships[neighborhoodId].color;
+      try {
+        return (c || '#cccccc') + '80';
+      } catch (e) {
+        return 'rgba(200, 200, 200, 0.1)';
+      }
     }
     return 'rgba(200, 200, 200, 0.1)';
   };
 
+  const [modalVisible, setModalVisible] = useState(false);
+  const [selectedNeighborhood, setSelectedNeighborhood] = useState(null);
+  const [neighborhoodDetails, setNeighborhoodDetails] = useState(null);
+
+  const handleNeighborhoodPress = async (neighborhoodId) => {
+    let details = null;
+    try {
+      const token = await AsyncStorage.getItem('userToken');
+      if (token) {
+        const resp = await fetch(`http://10.0.2.2:3000/location/neighborhood/${neighborhoodId}`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (resp.ok) {
+          details = await resp.json();
+        }
+      }
+    } catch (err) {
+      console.error('Error fetching neighborhood details', err);
+    }
+
+    // Fallback to locally cached ownerships if backend/details not available
+    if (!details && ownerships[neighborhoodId]) {
+      const o = ownerships[neighborhoodId];
+      details = {
+        neighborhood_id: neighborhoodId,
+        owner_name: o.owner_name || o.owner,
+        owner_color: o.owner_color || o.color,
+        max_steps: o.max_steps,
+        captured_at: o.captured_at
+      };
+    }
+
+    setNeighborhoodDetails(details);
+    setSelectedNeighborhood(neighborhoodId);
+    setModalVisible(true);
+  };
+
   const getNeighborhoodStroke = (neighborhoodId) => {
     if (ownerships[neighborhoodId]) {
-      return ownerships[neighborhoodId].color;
+      return ownerships[neighborhoodId].owner_color || ownerships[neighborhoodId].color || '#cccccc';
     }
     return '#cccccc';
   };
@@ -261,6 +306,8 @@ const MapScreen = ({ navigation }) => {
             fillColor={getNeighborhoodColor(neighborhood.id)}
             strokeColor={getNeighborhoodStroke(neighborhood.id)}
             strokeWidth={ownerships[neighborhood.id] ? 3 : 1}
+            tappable={true}
+            onPress={() => handleNeighborhoodPress(neighborhood.id)}
           />
         ))}
         
@@ -277,6 +324,33 @@ const MapScreen = ({ navigation }) => {
           <Text style={styles.zoomButtonText}>−</Text>
         </TouchableOpacity>
       </View>
+
+      <Modal visible={modalVisible} animationType="slide" transparent={true} onRequestClose={() => setModalVisible(false)}>
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.5)' }}>
+          <View style={{ width: '86%', backgroundColor: Colors.card, padding: 16, borderRadius: 12 }}>
+            <View style={{ flexDirection:'row', justifyContent:'space-between', alignItems:'center' }}>
+              <Text style={{ color: '#fff', fontSize: 18, fontWeight: '800' }}>Turf Details</Text>
+              {neighborhoodDetails?.owner_color ? (
+                <View style={{ width:18, height:18, borderRadius:9, backgroundColor: neighborhoodDetails.owner_color }} />
+              ) : null}
+            </View>
+
+            {neighborhoodDetails ? (
+              <View style={{ marginTop:10 }}>
+                <Text style={{ color: '#fff', fontWeight:'700' }}>Owner: {neighborhoodDetails.owner_name}</Text>
+                <Text style={{ color: Colors.muted, marginTop:6 }}>Record steps: {neighborhoodDetails.max_steps?.toLocaleString() ?? '—'}</Text>
+                <Text style={{ color: Colors.muted, marginTop:6 }}>Captured: {neighborhoodDetails.captured_at ? new Date(neighborhoodDetails.captured_at).toLocaleString() : '—'}</Text>
+              </View>
+            ) : (
+              <Text style={{ color: Colors.muted, marginTop:10 }}>No owner data</Text>
+            )}
+
+            <TouchableOpacity style={{ marginTop: 14, backgroundColor: Colors.accent, padding: 12, borderRadius: 10, alignItems: 'center' }} onPress={() => setModalVisible(false)}>
+              <Text style={{ color: '#04263a', fontWeight: '800' }}>Close</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
 
       <TouchableOpacity 
         style={styles.leaderboardButtonTopLeft} 

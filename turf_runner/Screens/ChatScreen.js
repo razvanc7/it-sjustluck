@@ -9,6 +9,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context'; // Added import
 import { neighborhoods } from '../data/neighborhoods';
+import Theme, { Colors, Avatar } from '../components/Theme';
 
 const ChatScreen = ({ navigation }) => {
   const insets = useSafeAreaInsets(); // Hook for insets
@@ -126,11 +127,9 @@ const ChatScreen = ({ navigation }) => {
           const isMe = item.user_id === userId;
           return (
             <View style={[styles.row, isMe ? styles.rowEnd : styles.rowStart]}>
-                {!isMe && (
-                   <View style={[styles.avatar, { backgroundColor: item.user_color || '#777' }]}>
-                        <Text style={styles.avatarText}>{item.user_name?.charAt(0).toUpperCase()}</Text>
-                   </View>
-                )}
+                 {!isMe && (
+                   <Avatar name={item.user_name} size={36} color={item.user_color} />
+                 )}
                 <View style={[
                     styles.msgContainer, 
                     isMe ? styles.myMsg : styles.theirMsg
@@ -228,15 +227,15 @@ const styles = StyleSheet.create({
       paddingHorizontal: 5,
       paddingVertical: 5
   },
-  input: { flex: 1, color: '#fff', paddingHorizontal: 15, fontSize: 16, height: 40 },
-  sendButton: { 
-      backgroundColor: '#3498db', 
-      width: 40, height: 40, 
-      borderRadius: 20, 
+    input: { flex: 1, color: '#fff', paddingHorizontal: 15, fontSize: 16, height: 40 },
+    sendButton: { 
+      backgroundColor: Colors.accent, 
+      width: 44, height: 44, 
+      borderRadius: 22, 
       justifyContent: 'center', 
       alignItems: 'center',
-      marginLeft: 5 
-  },
+      marginLeft: 6 
+    },
 });
 
 export default ChatScreen;
