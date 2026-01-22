@@ -92,6 +92,22 @@ router.post("/", authenticateToken, async (req: AuthenticatedRequest, res: Respo
       [sender_id, receiver_id]
     );
 
+    // CREATE NOTIFICATION FOR FRIEND REQUEST
+    try {
+      const senderRes = await pool.query("SELECT name FROM users WHERE id = $1", [sender_id]);
+      const senderName = senderRes.rows.length > 0 ? senderRes.rows[0].name : 'Someone';
+      const message = `${senderName} sent you a friend request.`;
+      
+      await pool.query(
+        `INSERT INTO notifications (user_id, actor_id, neighborhood_id, message, is_read, created_at)
+         VALUES ($1, $2, $3, $4, false, NOW())`,
+        [receiver_id, sender_id, null, message]
+      );
+    } catch (notifErr) {
+      console.error('Failed to create friend request notification:', notifErr);
+      // Don't fail the request if notification fails
+    }
+
     res.status(201).json({ message: `Cerere de prietenie trimisă către ${friend_name}.` });
   } catch (err: any) {
     console.error("Error sending friend request:", err);
@@ -221,4 +237,73 @@ router.delete("/:friendId", authenticateToken, async (req: AuthenticatedRequest,
     }
 });
 
+// Get friend details (profile + stats + owned neighborhoods)
+router.get('/:id/details', authenticateToken, async (req: AuthenticatedRequest, res: Response) => {
+    const requester = req.userId;
+    const friendId = parseInt(req.params.id);
+
+    if (!requester || !friendId) return res.status(400).json({ error: 'Invalid ids.' });
+
+    try {
+        // Verify friendship exists and is accepted
+        const rel = await pool.query(
+            `SELECT 1 FROM friends WHERE ((user_id = $1 AND friend_id = $2) OR (user_id = $2 AND friend_id = $1)) AND status = 'accepted' LIMIT 1`,
+            [requester, friendId]
+        );
+
+        if (rel.rows.length === 0) return res.status(403).json({ error: 'You are not friends with this user.' });
+
+        // Fetch basic profile
+        const userResult = await pool.query("SELECT id, name, email, created_at, color FROM users WHERE id = $1", [friendId]);
+        if (userResult.rows.length === 0) return res.status(404).json({ error: 'User not found.' });
+        const user = userResult.rows[0];
+
+        // Stats (reuse profile logic)
+        const statsResult = await pool.query(
+            `SELECT 
+                COALESCE(SUM(total_distance), 0) as total_distance,
+                COALESCE(SUM(total_steps), 0) as total_steps,
+                COUNT(*) FILTER (WHERE is_active = false) as total_sessions,
+                COUNT(*) FILTER (WHERE is_active = true) as active_sessions
+             FROM tracking_sessions 
+             WHERE user_id = $1`,
+            [friendId]
+        );
+
+        const ownershipResult = await pool.query(
+            `SELECT neighborhood_id, max_steps, captured_at FROM neighborhood_ownership WHERE user_id = $1`,
+            [friendId]
+        );
+
+        const avgDistanceResult = await pool.query(
+            `SELECT AVG(total_distance) as avg_distance
+             FROM tracking_sessions
+             WHERE user_id = $1 AND is_active = false AND total_distance > 0`,
+            [friendId]
+        );
+
+        const stats = statsResult.rows[0];
+        const avgDistance = avgDistanceResult.rows[0];
+
+            res.json({
+                id: user.id,
+                name: user.name,
+                email: user.email,
+                created_at: user.created_at,
+                color: user.color,
+            statistics: {
+                total_distance: parseFloat(stats.total_distance) || 0,
+                total_steps: parseInt(stats.total_steps) || 0,
+                total_sessions: parseInt(stats.total_sessions) || 0,
+                active_sessions: parseInt(stats.active_sessions) || 0,
+                unique_neighborhoods: ownershipResult.rowCount || 0,
+                avg_distance_per_session: parseFloat(avgDistance.avg_distance) || 0
+            },
+            owned_neighborhoods: ownershipResult.rows
+        });
+    } catch (err: any) {
+        console.error('Error fetching friend details:', err);
+        res.status(500).json({ error: 'Server error fetching friend details.' });
+    }
+});
 export default router;

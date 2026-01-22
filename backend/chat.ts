@@ -41,7 +41,7 @@ router.post("/:neighborhoodId", authenticateToken, async (req: any, res: Respons
       [neighborhoodId, userId, message]
     );
 
-    // Get sender name AND color for response
+    // Get sender info
     const userRes = await pool.query("SELECT name, color FROM users WHERE id = $1", [userId]);
     const userData = userRes.rows[0];
 
@@ -50,10 +50,39 @@ router.post("/:neighborhoodId", authenticateToken, async (req: any, res: Respons
       neighborhood_id: neighborhoodId,
       user_id: userId,
       user_name: userData.name,
-      user_color: userData.color, // Return color immediately
+      user_color: userData.color, 
       message: message,
       created_at: result.rows[0].created_at
     };
+
+    // NOTIFICATION LOGIC
+    // 1. Find the owner
+    const ownerRes = await pool.query('SELECT user_id FROM neighborhood_ownership WHERE neighborhood_id = $1', [neighborhoodId]);
+    const ownerId = ownerRes.rows.length > 0 ? ownerRes.rows[0].user_id : null;
+
+    // 2. Find recent participants (last 24h)
+    const participantsRes = await pool.query(
+        `SELECT DISTINCT user_id FROM chat_messages 
+         WHERE neighborhood_id = $1 AND created_at > NOW() - INTERVAL '24 hours' AND user_id != $2`,
+        [neighborhoodId, userId]
+    );
+    
+    // 3. Combine targets (Set to avoid duplicates)
+    const targets = new Set<number>();
+    if (ownerId && ownerId !== userId) targets.add(ownerId);
+    participantsRes.rows.forEach(r => targets.add(r.user_id));
+
+    // 4. Send Notifications
+    const snippet = message.length > 30 ? message.substring(0, 30) + '...' : message;
+    const notifMsg = `${userData.name} in ${neighborhoodId}: ${snippet}`;
+
+    for (const targetId of targets) {
+        await pool.query(
+            `INSERT INTO notifications (user_id, actor_id, neighborhood_id, message, is_read, created_at)
+             VALUES ($1, $2, $3, $4, false, NOW())`,
+            [targetId, userId, neighborhoodId, notifMsg]
+        );
+    }
     
     res.json(newMessage);
   } catch (err) {

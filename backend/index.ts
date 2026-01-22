@@ -6,6 +6,8 @@ import profileRoutes from "./profile";
 import friendsRoutes from "./friends"; 
 import leaderboardRoutes from "./leaderboard";
 import chatRoutes from "./chat"; // <--- Import
+import notificationRoutes from "./notifications";
+import achievementsRoutes from "./achievements";
 
 const app = express();
 app.use(cors());
@@ -17,6 +19,8 @@ app.use("/profile", profileRoutes);
 app.use("/location", locationRoutes); 
 app.use("/leaderboard", leaderboardRoutes);
 app.use("/chat", chatRoutes); // <--- Use
+app.use("/notifications", notificationRoutes);
+app.use("/achievements", achievementsRoutes);
 
 app.listen(3000, "0.0.0.0", () => {
   console.log("Server running on:");

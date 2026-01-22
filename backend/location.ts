@@ -51,6 +51,35 @@ const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: numbe
 
 const calculateSteps = (distanceInMeters: number) => Math.round(distanceInMeters / AVERAGE_STEP_LENGTH);
 
+// Award achievement helper
+const awardAchievement = async (userId: number, code: string, meta: object | null = null) => {
+  try {
+    // find achievement id
+    const aRes = await pool.query('SELECT id, title FROM achievements WHERE code = $1', [code]);
+    if (aRes.rows.length === 0) return;
+    const achId = aRes.rows[0].id;
+    const title = aRes.rows[0].title || 'Achievement';
+
+    // insert into user_achievements if not exists
+    await pool.query(
+      `INSERT INTO user_achievements (user_id, achievement_id, meta)
+       VALUES ($1, $2, $3)
+       ON CONFLICT (user_id, achievement_id) DO NOTHING`,
+      [userId, achId, meta ? JSON.stringify(meta) : null]
+    );
+
+    // create a notification for the user
+    const message = `You've earned an achievement: ${title}`;
+    await pool.query(
+      `INSERT INTO notifications (user_id, actor_id, neighborhood_id, message, is_read, created_at)
+       VALUES ($1, $2, $3, $4, false, NOW())`,
+      [userId, userId, null, message]
+    );
+  } catch (err) {
+    console.error('awardAchievement error', err);
+  }
+};
+
 // --- Routes ---
 
 // Get current map State (Owners)
@@ -61,7 +90,8 @@ router.get("/map-state", authenticateToken, async (req: AuthenticatedRequest, re
         no.neighborhood_id, 
         no.max_steps, 
         u.color as owner_color,
-        u.name as owner_name
+        u.name as owner_name,
+        no.captured_at
       FROM neighborhood_ownership no
       JOIN users u ON no.user_id = u.id
     `);
@@ -69,6 +99,28 @@ router.get("/map-state", authenticateToken, async (req: AuthenticatedRequest, re
   } catch (err) {
     console.error("Error fetching map state:", err);
     res.status(500).json({ error: "Map state error" });
+  }
+});
+
+// Get neighborhood details by id
+router.get('/neighborhood/:id', authenticateToken, async (req: AuthenticatedRequest, res: Response) => {
+  const nid = req.params.id;
+  try {
+    const result = await pool.query(`
+      SELECT no.neighborhood_id, no.max_steps, no.captured_at, u.id as owner_id, u.name as owner_name, u.color as owner_color
+      FROM neighborhood_ownership no
+      JOIN users u ON no.user_id = u.id
+      WHERE no.neighborhood_id = $1
+    `, [nid]);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'No ownership record' });
+    }
+
+    res.json(result.rows[0]);
+  } catch (err) {
+    console.error('Error fetching neighborhood details:', err);
+    res.status(500).json({ error: 'Internal error' });
   }
 });
 
@@ -129,6 +181,10 @@ router.post("/track", authenticateToken, async (req: AuthenticatedRequest, res: 
       [dist, steps, sessionId]
     );
 
+    // fetch updated session totals for achievement checks
+    const sessionRow = await pool.query('SELECT total_steps FROM tracking_sessions WHERE id = $1', [sessionId]);
+    const sessionTotalSteps = sessionRow.rows.length > 0 ? sessionRow.rows[0].total_steps : 0;
+
     // 4. CHECK NEIGHBORHOODS & CAPTURE LOGIC
     let neighborhoodId = null;
     let didCapture = false;
@@ -152,15 +208,17 @@ router.post("/track", authenticateToken, async (req: AuthenticatedRequest, res: 
           const currentSessionSteps = visitResult.rows[0].steps;
 
           // B. CHECK IF WE OVERTHROW THE KING
-          // Check current max steps
+          // Check current owner and max steps
           const ownerCheck = await pool.query(
-            "SELECT max_steps FROM neighborhood_ownership WHERE neighborhood_id = $1",
+            "SELECT user_id, max_steps FROM neighborhood_ownership WHERE neighborhood_id = $1",
             [n.id]
           );
 
           let currentRecord = 0;
+          let previousOwnerId: number | null = null;
           if (ownerCheck.rows.length > 0) {
             currentRecord = ownerCheck.rows[0].max_steps;
+            previousOwnerId = ownerCheck.rows[0].user_id;
           }
 
           if (currentSessionSteps > currentRecord) {
@@ -172,12 +230,57 @@ router.post("/track", authenticateToken, async (req: AuthenticatedRequest, res: 
                DO UPDATE SET user_id = $2, max_steps = $3, captured_at = NOW()`,
               [n.id, user_id, currentSessionSteps]
             );
+
+            // If there was a previous owner and it's not the same as the new owner, create a notification
+            if (previousOwnerId && previousOwnerId !== user_id) {
+              try {
+                const actorRes = await pool.query(`SELECT name FROM users WHERE id = $1`, [user_id]);
+                const actorName = actorRes.rows.length > 0 ? actorRes.rows[0].name : 'Someone';
+                const message = `${actorName} captured your turf ${n.id} with ${currentSessionSteps} steps.`;
+                await pool.query(
+                  `INSERT INTO notifications (user_id, actor_id, neighborhood_id, message, is_read, created_at)
+                   VALUES ($1, $2, $3, $4, false, NOW())`,
+                  [previousOwnerId, user_id, n.id, message]
+                );
+              } catch (notifErr) {
+                console.error('Failed to create notification:', notifErr);
+              }
+            }
+
+            // Award capture-related achievements
+            try {
+              // first capture: check if user already has any user_achievements for code 'first_capture'
+              const uaRes = await pool.query(
+                `SELECT 1 FROM user_achievements ua JOIN achievements a ON ua.achievement_id = a.id WHERE ua.user_id = $1 AND a.code = 'first_capture' LIMIT 1`,
+                [user_id]
+              );
+              if (uaRes.rows.length === 0) {
+                await awardAchievement(user_id as number, 'first_capture', { neighborhood: n.id });
+              }
+
+              // big capture
+              if (currentSessionSteps >= 5000) {
+                await awardAchievement(user_id as number, 'capture_big', { neighborhood: n.id, steps: currentSessionSteps });
+              }
+            } catch (achErr) {
+              console.error('Achievement award error:', achErr);
+            }
+
             didCapture = true;
             console.log(`User ${user_id} captured ${n.id} with ${currentSessionSteps} steps!`);
           }
           break; // Only in one neighborhood at a time
         }
       }
+    }
+
+    // Check for session-level achievements (marathon)
+    try {
+      if (sessionTotalSteps >= 10000) {
+        await awardAchievement(user_id as number, 'session_marathon', { sessionId, totalSteps: sessionTotalSteps });
+      }
+    } catch (err) {
+      console.error('Session achievement check failed', err);
     }
 
     res.json({ 

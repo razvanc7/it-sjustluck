@@ -5,6 +5,10 @@ const initDb = async () => {
         console.log("Starting database initialization...");
 
         // Drop tables if they exist (Reverse order of dependencies)
+        await pool.query(`DROP TABLE IF EXISTS user_achievements CASCADE`);
+        await pool.query(`DROP TABLE IF EXISTS achievements CASCADE`);
+        await pool.query(`DROP TABLE IF EXISTS notifications CASCADE`);
+        await pool.query(`DROP TABLE IF EXISTS chat_messages CASCADE`);
         await pool.query(`DROP TABLE IF EXISTS neighborhood_ownership CASCADE`);
         await pool.query(`DROP TABLE IF EXISTS friends CASCADE`);
         await pool.query(`DROP TABLE IF EXISTS neighborhood_visits CASCADE`);
@@ -87,18 +91,64 @@ const initDb = async () => {
             );
         `);
 
-        // Create Chat Table 
+        // Create Chat Messages Table
         await pool.query(`
-            CREATE TABLE IF NOT EXISTS chat_messages (
+            CREATE TABLE chat_messages (
                 id SERIAL PRIMARY KEY,
-                neighborhood_id VARCHAR(255) NOT NULL,
+                neighborhood_id VARCHAR(50) NOT NULL,
                 user_id INTEGER REFERENCES users(id),
                 message TEXT NOT NULL,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                );
+            );
         `);
 
-        console.log("Database initialized successfully with fresh tables (including friends)!");
+        // Create Notifications Table
+        await pool.query(`
+            CREATE TABLE notifications (
+                id SERIAL PRIMARY KEY,
+                user_id INTEGER REFERENCES users(id), -- recipient
+                actor_id INTEGER REFERENCES users(id), -- who triggered the notification
+                neighborhood_id VARCHAR(50),
+                message TEXT,
+                is_read BOOLEAN DEFAULT false,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+        `);
+
+        // Create Achievements Table
+        await pool.query(`
+            CREATE TABLE achievements (
+                id SERIAL PRIMARY KEY,
+                code VARCHAR(100) UNIQUE NOT NULL,
+                title VARCHAR(200) NOT NULL,
+                description TEXT,
+                icon VARCHAR(200),
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+        `);
+
+        // Create User Achievements Table
+        await pool.query(`
+            CREATE TABLE user_achievements (
+                id SERIAL PRIMARY KEY,
+                user_id INTEGER REFERENCES users(id),
+                achievement_id INTEGER REFERENCES achievements(id),
+                awarded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                meta JSONB,
+                UNIQUE(user_id, achievement_id)
+            );
+        `);
+
+        // Seed some default achievements
+        await pool.query(`
+            INSERT INTO achievements (code, title, description, icon) VALUES
+            ('first_capture', 'First Capture', 'Capture your first turf.', '🏆'),
+            ('capture_big', 'Big Capture', 'Capture a turf with over 5,000 steps.', '💪'),
+            ('session_marathon', 'Marathon Session', 'Accumulate 10,000 steps in a single session.', '🏃‍♂️')
+            ON CONFLICT (code) DO NOTHING;
+        `);
+
+        console.log("Database initialized successfully with fresh tables (including friends and chat_messages)!");
     } catch (error) {
         console.error("Error initializing database:", error);
     } finally {

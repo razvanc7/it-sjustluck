@@ -85,4 +85,54 @@ router.get("/", authenticateToken, async (req: AuthenticatedRequest, res: Respon
   }
 });
 
+// Update Profile Route
+router.put("/", authenticateToken, async (req: AuthenticatedRequest, res: Response) => {
+  const userId = req.userId;
+  const { name, email, color } = req.body;
+
+  try {
+    // Only update fields that are provided
+    if (name) {
+       // Check availability
+       const exist = await pool.query('SELECT id FROM users WHERE name = $1 AND id != $2', [name, userId]);
+       if (exist.rows.length > 0) return res.status(400).json({ error: 'Username already taken.' });
+    }
+    
+    // Dynamic query construction
+    let query = "UPDATE users SET ";
+    const values = [];
+    let idx = 1;
+
+    if (name) {
+      query += `name = $${idx++}, `;
+      values.push(name);
+    }
+    if (email) {
+      query += `email = $${idx++}, `;
+      values.push(email);
+    }
+    if (color) {
+      query += `color = $${idx++}, `;
+      values.push(color);
+    }
+    
+    // Remove trailing comma and space
+    if (values.length === 0) return res.status(400).json({ error: "No fields to update." });
+    query = query.slice(0, -2);
+    
+    query += ` WHERE id = $${idx}`;
+    values.push(userId);
+
+    await pool.query(query, values);
+
+    // Return updated user info
+    const updatedUser = await pool.query('SELECT name, email, color FROM users WHERE id = $1', [userId]);
+    res.json({ message: "Profile updated successfully.", user: updatedUser.rows[0] });
+
+  } catch (err) {
+    console.error("Profile update error:", err);
+    res.status(500).json({ error: "Server error updating profile." });
+  }
+});
+
 export default router;
