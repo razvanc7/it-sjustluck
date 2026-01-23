@@ -329,7 +329,9 @@ const MapScreen = ({ navigation }) => {
         <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.5)' }}>
           <View style={{ width: '86%', backgroundColor: Colors.card, padding: 16, borderRadius: 12 }}>
             <View style={{ flexDirection:'row', justifyContent:'space-between', alignItems:'center' }}>
-              <Text style={{ color: '#fff', fontSize: 18, fontWeight: '800' }}>Turf Details</Text>
+              <Text style={{ color: '#fff', fontSize: 18, fontWeight: '800' }}>
+                {neighborhoods.find(n => n.id === selectedNeighborhood)?.name || 'Turf Details'}
+              </Text>
               {neighborhoodDetails?.owner_color ? (
                 <View style={{ width:18, height:18, borderRadius:9, backgroundColor: neighborhoodDetails.owner_color }} />
               ) : null}
